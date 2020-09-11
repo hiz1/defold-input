@@ -14,7 +14,7 @@ end
 
 function init(self)
 	msg.post(".", "acquire_input_focus")
-	self.input_state = input_state.create()
+	self.input_state = input_state.create(0.25)
 	self.current_animation = nil
 end
 
@@ -32,6 +32,8 @@ function update(self, dt)
 		play_animation(self, hash("green_player_idle"))
 	end
 	go.set_position(pos)
+
+	self.input_state.update(dt)
 end
 
 function on_message(self, message_id, message, sender)

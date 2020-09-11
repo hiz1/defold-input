@@ -4,10 +4,12 @@ local M = {}
 
 --- Create an instance of the input state tracker
 -- @return State instance
-function M.create()
+function M.create(repeat_interval)
 	local instance = {}
 
 	local action_map = {}
+
+	local repeat_interval = repeat_interval or 100000000
 
 	--- Acquire input focus for the current script
 	-- @param url
@@ -26,10 +28,49 @@ function M.create()
 	--- Check if an action is currently pressed or not
 	-- @param action_id
 	-- @return true if action_id is pressed
+	-- @return pressed time
+	-- @return relesed time
 	function instance.is_pressed(action_id)
 		assert(action_id, "You must provide an action_id")
 		action_id = type(action_id) == "string" and hash(action_id) or action_id
-		return action_map[action_id]
+		if not action_map[action_id] then return false,0 end
+		return action_map[action_id].pressed
+		,action_map[action_id].pressed_time
+		,action_map[action_id].released_time
+	end
+
+	--- Check if an action is currently repeated or not
+	-- @param action_id
+	-- @return true if action_id is repeated
+	function instance.is_repeated(action_id)
+		assert(action_id, "You must provide an action_id")
+		action_id = type(action_id) == "string" and hash(action_id) or action_id
+		if not action_map[action_id] then return false,0 end
+		return action_map[action_id].pressed and action_map[action_id].repeat_time == 0
+	end
+
+	--- Check if an action is just pressed or not
+	-- @param action_id
+	-- @return true if action_id is just pressed
+	-- @return relesed time
+	function instance.is_just_pressed(action_id)
+		assert(action_id, "You must provide an action_id")
+		action_id = type(action_id) == "string" and hash(action_id) or action_id
+		if not action_map[action_id] then return false,0 end
+		return action_map[action_id].pressed and action_map[action_id].pressed_time == 0
+		,action_map[action_id].released_time
+	end
+
+	--- Check if an action is just released or not
+	-- @param action_id
+	-- @return true if action_id is just released
+	-- @return pressed time
+	function instance.is_just_released(action_id)
+		assert(action_id, "You must provide an action_id")
+		action_id = type(action_id) == "string" and hash(action_id) or action_id
+		if not action_map[action_id] then return false,0 end
+		return not action_map[action_id].pressed and action_map[action_id].released_time == 0
+		,action_map[action_id].pressed_time
 	end
 
 	--- Forward any calls to on_input from scripts using this module
@@ -40,9 +81,37 @@ function M.create()
 		if action_id then
 			action_id = type(action_id) == "string" and hash(action_id) or action_id
 			if action.pressed then
-				action_map[action_id] = true
+				if not action_map[action_id] then
+					action_map[action_id] = {pressed = true, pressed_time = 0, released_time = 0, repeat_time = 0}
+				elseif not action_map[action_id].pressed then
+					action_map[action_id].pressed = true
+					action_map[action_id].pressed_time = 0
+					action_map[action_id].repeat_time = 0
+				end
 			elseif action.released then
-				action_map[action_id] = false
+				if not action_map[action_id] then
+					action_map[action_id] = {pressed = false, pressed_time = 0, released_time = 0, repeat_time = 0}
+				elseif action_map[action_id].pressed then
+					action_map[action_id].pressed = false
+					action_map[action_id].released_time = 0
+					action_map[action_id].repeat_time = 0
+				end
+			end
+		end
+	end
+
+	function instance.update(dt)
+		for action_id, value in pairs(action_map) do
+			if action_map[action_id] then
+				if action_map[action_id].pressed then
+					action_map[action_id].pressed_time = action_map[action_id].pressed_time + dt
+					action_map[action_id].repeat_time = action_map[action_id].repeat_time + dt
+					if action_map[action_id].repeat_time >= repeat_interval then
+						action_map[action_id].repeat_time = 0
+					end
+				else
+					action_map[action_id].released_time = action_map[action_id].released_time + dt
+				end
 			end
 		end
 	end
