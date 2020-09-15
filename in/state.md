@@ -9,7 +9,7 @@ How you can use the State module is to create a unique instance. This is useful 
 
 	function init(self)
 		msg.post(".", "acquire_input_focus")
-		self.state = state.create(0.2)		-- key repeated every 0.2 seconds.
+		self.state = state.create(1, 0.2)		-- key repeated every 0.2s(wait 1s for first time).
 	end
 
 	function update(self, dt)
@@ -75,9 +75,10 @@ Check if an action is just released or not
 ### state.clear([instance])
 Clear the state of any registered actions
 
-### state.create(repeat_interval)
+### state.create([repeat_interval], [repeat_delay])
 Create a unique instance of the state tracker
 
 **PARAMETERS**
-* ```repeat_interval``` (number) - key repeat interval(second)
+* ```repeat_interval``` (number) - time to repeat key (default 0.1)
+* ```repeat_delay``` (number) - delay time to repeat key (default 0.5)
 
